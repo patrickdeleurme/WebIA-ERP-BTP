@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  housekeepingTasks HousekeepingTask[]
+}
+
+model Settings {
+  id             Int      @id @default(1)
+  vatRate        Float    @default(0.20)
+  touristTax     Float    @default(0.0)
+  exchangeRateEUR Float   
+  exchangeRateUSD Float   
+  updatedAt      DateTime @updatedAt
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  MAINTENANCE
+  CLEANING
+}
+
+model Room {
+  id           String @id @default(uuid())
+  number       String @unique
+  name         String?
+  type         String
+  capacity     Int
+  basePriceMGA Float  
+  status       RoomStatus @default(AVAILABLE)
+  reservations Reservation[]
+  maintenance  MaintenanceTicket[]
+  housekeeping HousekeepingTask[]
+}
+
+model Guest {
+  id           String @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String?
+  phone        String?
+  country      String?
+  guestType    String 
+  reservations Reservation[]
+}
+
+enum ReservationSource {
+  DIRECT
+  OTA
+}
+
+enum ReservationStatus {
+  PLANNED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Reservation {
+  id            String   @id @default(uuid())
+  guestId       String
+  guest         Guest    @relation(fields: [guestId], references: [id])
+  roomId        String
+  room          Room     @relation(fields: [roomId], references: [id])
+  checkIn       DateTime
+  checkOut      DateTime
+  guestsCount   Int
+  source        ReservationSource
+  status        ReservationStatus
+  otaPlatformId String?
+  otaPlatform   OtaPlatform? @relation(fields: [otaPlatformId], references: [id])
+  invoice       Invoice?
+  otaCommission OtaCommission?
+}
+
+model OtaPlatform {
+  id             String @id @default(uuid())
+  name           String 
+  commissionType String 
+  commissionRate Float
+  reservations   Reservation[]
+}
+
+model OtaCommission {
+  id            String @id @default(uuid())
+  reservationId String @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+  amountMGA     Float
+  status        String 
+}
+
+model Invoice {
+  id            String @id @default(uuid())
+  reference     String @unique
+  reservationId String @unique
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+  amountHT_MGA  Float
+  vatAmount_MGA Float
+  touristTaxMGA Float
+  totalTTC_MGA  Float
+  status        String 
+}
+
+model HousekeepingTask {
+  id       String   @id @default(uuid())
+  roomId   String
+  room     Room     @relation(fields: [roomId], references: [id])
+  date     DateTime
+  status   String   
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id])
+}
+
+model MaintenanceTicket {
+  id          String   @id @default(uuid())
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id])
+  description String
+  priority    String
+  status      String
+  createdAt   DateTime @default(now())
+}
